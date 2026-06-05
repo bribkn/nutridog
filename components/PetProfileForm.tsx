@@ -25,6 +25,8 @@ export default function PetProfileForm({ initialProfile, onSaveProfile }: PetPro
   const [profile, setProfile] = useState<PetProfile>(initialProfile);
   const [isSaved, setIsSaved] = useState<boolean>(false);
 
+
+
   // Perform veterinary calculations dynamically during render (derived state)
   const weight = Number(profile.weight) || 1;
   const foodDensity = Number(profile.foodDensity) || 3.5;
