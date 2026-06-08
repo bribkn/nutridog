@@ -14,12 +14,17 @@ import {
   Plus,
   Smartphone,
   Share,
-  Sparkles
+  Sparkles,
+  Clock,
+  Trash2,
+  Edit2,
+  Check,
+  ShieldAlert
 } from "lucide-react";
 
 import LoginScreen from "@/components/LoginScreen";
 import PetProfileForm, { PetProfile } from "@/components/PetProfileForm";
-import HistoryCharts from "@/components/HistoryCharts";
+import HistoryCharts, { WeightRecord } from "@/components/HistoryCharts";
 import VetBooking from "@/components/VetBooking";
 import FeederSimulator from "@/components/FeederSimulator";
 
@@ -45,6 +50,13 @@ interface FeedingLog {
   calories?: number;
 }
 
+interface MealScheduleItem {
+  id: string;
+  time: string; // e.g. "08:00 AM"
+  grams: number;
+  enabled: boolean;
+}
+
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState<"inicio" | "calc" | "registro" | "vet" | "simulator">("inicio");
@@ -54,31 +66,60 @@ export default function App() {
   const [isInstallable, setIsInstallable] = useState(false);
   const [showIosPrompt, setShowIosPrompt] = useState(false);
 
-  // Seeding multiple pets (Dogs & Cats)
+  // Seeding multiple pets with weight histories, pathologies, and meals schedules
   const [pets, setPets] = useState<PetProfile[]>([
     {
       name: "Lola",
       species: "dog",
       breed: "Golden Retriever",
       age: 6,
-      weight: 14.5,
+      weight: 12.1,
       isNeutered: true,
       activityLevel: "moderate",
-      bcs: 8, // Overweight
-      foodDensity: 3.5,
+      bcs: 6,
+      foodDensity: 3.1,
       mealsPerDay: 3,
+      pathologies: ["obesidad"],
+      foodType: "seca",
+      foodBrand: "Royal Canin",
+      foodProduct: "Satiety Support Weight Management (Perro)",
+      weightHistory: [
+        { date: "2026-03-01", weight: 14.5, bcs: 8 },
+        { date: "2026-03-20", weight: 13.8, bcs: 8 },
+        { date: "2026-04-10", weight: 13.2, bcs: 7 },
+        { date: "2026-05-01", weight: 12.5, bcs: 6 },
+        { date: "2026-05-25", weight: 12.1, bcs: 6 }
+      ],
+      mealsSchedule: [
+        { id: "lola-m1", time: "08:00 AM", grams: 45, enabled: true },
+        { id: "lola-m2", time: "02:00 PM", grams: 45, enabled: true },
+        { id: "lola-m3", time: "08:00 PM", grams: 50, enabled: true }
+      ]
     },
     {
       name: "Felix",
       species: "cat",
       breed: "Siamés",
       age: 4,
-      weight: 5.2,
+      weight: 5.5,
       isNeutered: true,
       activityLevel: "moderate",
-      bcs: 7, // Heavy cat
-      foodDensity: 3.1,
+      bcs: 8,
+      foodDensity: 3.8,
       mealsPerDay: 2,
+      pathologies: ["obesidad", "estomago"],
+      foodType: "seca",
+      foodBrand: "Royal Canin",
+      foodProduct: "Fit 32 Active Cat (Gato)",
+      weightHistory: [
+        { date: "2026-03-01", weight: 4.8, bcs: 6 },
+        { date: "2026-04-15", weight: 5.2, bcs: 7 },
+        { date: "2026-05-10", weight: 5.5, bcs: 8 } // Significant weight gain detected here!
+      ],
+      mealsSchedule: [
+        { id: "felix-m1", time: "09:00 AM", grams: 25, enabled: true },
+        { id: "felix-m2", time: "09:00 PM", grams: 25, enabled: true }
+      ]
     },
     {
       name: "Rocky",
@@ -88,9 +129,21 @@ export default function App() {
       weight: 9.8,
       isNeutered: false,
       activityLevel: "active",
-      bcs: 5, // Ideal Condition
-      foodDensity: 4.0,
+      bcs: 5,
+      foodDensity: 4.1,
       mealsPerDay: 3,
+      pathologies: [],
+      foodType: "seca",
+      foodBrand: "Purina Pro Plan",
+      foodProduct: "Active Mind Senior 7+ (Perro)",
+      weightHistory: [
+        { date: "2026-05-01", weight: 9.8, bcs: 5 }
+      ],
+      mealsSchedule: [
+        { id: "rocky-m1", time: "07:30 AM", grams: 50, enabled: true },
+        { id: "rocky-m2", time: "01:30 PM", grams: 50, enabled: true },
+        { id: "rocky-m3", time: "07:30 PM", grams: 50, enabled: true }
+      ]
     }
   ]);
 
@@ -159,12 +212,17 @@ export default function App() {
 
   const [notification, setNotification] = useState<string | null>(null);
 
+  // Editable Schedule state
+  const [editingMealId, setEditingMealId] = useState<string | null>(null);
+  const [editingTime, setEditingTime] = useState("");
+  const [editingGrams, setEditingGrams] = useState(25);
+
   const triggerNotification = (message: string) => {
     setNotification(message);
-    setTimeout(() => setNotification(null), 4000);
+    setTimeout(() => setNotification(null), 4500);
   };
 
-  // 1. Detect PWA Installation status and systems
+  // PWA detection hook
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
@@ -174,7 +232,6 @@ export default function App() {
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt as EventListener);
 
-    // Detect iOS devices that are not already launched in PWA standalone window mode
     const isIosDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     const isStandalone = (navigator as Navigator & { standalone?: boolean }).standalone || window.matchMedia("(display-mode: standalone)").matches;
     
@@ -192,13 +249,13 @@ export default function App() {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === "accepted") {
-      triggerNotification("¡Gracias por instalar NutriDog!");
+      triggerNotification("¡Gracias por instalar Feedly Pet!");
     }
     setDeferredPrompt(null);
     setIsInstallable(false);
   };
 
-  // Switcher configurations
+  // Fetch active pet and active dispenser
   const activePet = pets.find((p) => p.name === selectedPetId) || pets[0];
   const activeDispenser = dispensers.find((d) => d.id === selectedDispenserId) || dispensers[0];
 
@@ -215,12 +272,61 @@ export default function App() {
     );
   };
 
-  // Sync pet profile formula updates
+  // Sync pet profile updates
   const updatePetProfile = (updatedProfile: PetProfile) => {
     setPets((prev) =>
       prev.map((p) => (p.name === selectedPetId ? updatedProfile : p))
     );
     triggerNotification(`Perfil de ${updatedProfile.name} actualizado y sincronizado.`);
+  };
+
+  // Add weight record helper
+  const handleAddWeightRecord = (record: WeightRecord) => {
+    setPets((prev) =>
+      prev.map((p) => {
+        if (p.name === selectedPetId) {
+          const newHistory = [...(p.weightHistory || []), record];
+          const sorted = [...newHistory].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          const latestWeight = sorted[sorted.length - 1]?.weight || p.weight;
+          const latestBcs = sorted[sorted.length - 1]?.bcs || p.bcs;
+          return {
+            ...p,
+            weightHistory: newHistory,
+            weight: latestWeight,
+            bcs: latestBcs
+          };
+        }
+        return p;
+      })
+    );
+    triggerNotification(`Nuevo registro de peso guardado para ${selectedPetId}.`);
+  };
+
+  // Delete weight record helper
+  const handleDeleteWeightRecord = (idxToDelete: number) => {
+    setPets((prev) =>
+      prev.map((p) => {
+        if (p.name === selectedPetId) {
+          const history = p.weightHistory || [];
+          const newHistory = history.filter((_, i) => i !== idxToDelete);
+          let latestWeight = p.weight;
+          let latestBcs = p.bcs;
+          if (newHistory.length > 0) {
+            const sorted = [...newHistory].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            latestWeight = sorted[sorted.length - 1].weight;
+            latestBcs = sorted[sorted.length - 1].bcs;
+          }
+          return {
+            ...p,
+            weightHistory: newHistory,
+            weight: latestWeight,
+            bcs: latestBcs
+          };
+        }
+        return p;
+      })
+    );
+    triggerNotification("Registro de peso eliminado.");
   };
 
   // RER / MER calculations for active pet ring progress
@@ -245,6 +351,11 @@ export default function App() {
       if (profile.activityLevel === "sedentary") factor -= 0.15;
       else if (profile.activityLevel === "active") factor += 0.2;
     }
+
+    if (profile.pathologies?.includes("obesidad") || profile.bcs >= 7) {
+      factor = Math.min(factor, profile.species === "dog" ? 1.0 : 0.8);
+    }
+
     const finalFactor = Math.max(profile.species === "cat" ? 0.6 : 0.8, factor);
     return Math.round(computedRer * finalFactor);
   };
@@ -353,6 +464,17 @@ export default function App() {
       bcs: 5,
       foodDensity: 3.5,
       mealsPerDay: 3,
+      pathologies: [],
+      foodType: "seca",
+      foodBrand: "custom",
+      foodProduct: "custom",
+      weightHistory: [
+        { date: new Date().toISOString().split("T")[0], weight: 10, bcs: 5 }
+      ],
+      mealsSchedule: [
+        { id: `${nameInput}-m1`, time: "08:00 AM", grams: 35, enabled: true },
+        { id: `${nameInput}-m2`, time: "08:00 PM", grams: 35, enabled: true }
+      ]
     };
 
     setPets((prev) => [...prev, newPetObj]);
@@ -360,6 +482,156 @@ export default function App() {
     setSelectedPetId(nameInput);
     triggerNotification(`Mascota "${nameInput}" añadida con éxito.`);
   };
+
+  // Meals schedule logic helpers
+  const handleAddNewMeal = () => {
+    setPets((prev) =>
+      prev.map((p) => {
+        if (p.name === selectedPetId) {
+          const list = p.mealsSchedule || [];
+          const newMeal: MealScheduleItem = {
+            id: `meal-${Date.now()}`,
+            time: "12:00 PM",
+            grams: 25,
+            enabled: true
+          };
+          return { ...p, mealsSchedule: [...list, newMeal] };
+        }
+        return p;
+      })
+    );
+    triggerNotification("Nueva ración programada agregada. Haz clic en editar para configurarla.");
+  };
+
+  const handleDeleteMeal = (mealId: string) => {
+    setPets((prev) =>
+      prev.map((p) => {
+        if (p.name === selectedPetId) {
+          const list = p.mealsSchedule || [];
+          return { ...p, mealsSchedule: list.filter((m) => m.id !== mealId) };
+        }
+        return p;
+      })
+    );
+    triggerNotification("Toma de alimento eliminada.");
+  };
+
+  const handleToggleMeal = (mealId: string) => {
+    setPets((prev) =>
+      prev.map((p) => {
+        if (p.name === selectedPetId) {
+          const list = p.mealsSchedule || [];
+          const updated = list.map((m) => (m.id === mealId ? { ...m, enabled: !m.enabled } : m));
+          return { ...p, mealsSchedule: updated };
+        }
+        return p;
+      })
+    );
+    triggerNotification("Estado de la ración modificado.");
+  };
+
+  const startEditingMeal = (meal: MealScheduleItem) => {
+    setEditingMealId(meal.id);
+    setEditingGrams(meal.grams);
+    // Parse time string to HTML time format "HH:MM"
+    let clean = meal.time;
+    const isPm = clean.toLowerCase().includes("pm");
+    const isAm = clean.toLowerCase().includes("am");
+    let t = clean.replace(/(am|pm)/i, "").trim();
+    const parts = t.split(":");
+    let h = Number(parts[0]) || 0;
+    let m = Number(parts[1]) || 0;
+    if (isPm && h < 12) h += 12;
+    if (isAm && h === 12) h = 0;
+    setEditingTime(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
+  };
+
+  const saveMealScheduleEdit = () => {
+    if (!editingMealId) return;
+
+    // Convert time "15:30" to "03:30 PM"
+    const parseTo12h = (t24: string) => {
+      const parts = t24.split(":");
+      let h = Number(parts[0]) || 0;
+      const m = parts[1] || "00";
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12;
+      if (h === 0) h = 12;
+      return `${h.toString().padStart(2, "0")}:${m} ${ampm}`;
+    };
+
+    const newTimeLabel = parseTo12h(editingTime);
+
+    setPets((prev) =>
+      prev.map((p) => {
+        if (p.name === selectedPetId) {
+          const list = p.mealsSchedule || [];
+          const updated = list.map((m) =>
+            m.id === editingMealId ? { ...m, time: newTimeLabel, grams: Number(editingGrams) } : m
+          );
+          return { ...p, mealsSchedule: updated };
+        }
+        return p;
+      })
+    );
+
+    setEditingMealId(null);
+    triggerNotification("Horario e ingesta de ración programada guardados.");
+  };
+
+  // Helper function to find the next active meal schedule
+  const getNextScheduledMeal = (pet: PetProfile) => {
+    const list = pet.mealsSchedule || [];
+    const enabledMeals = list.filter((m) => m.enabled);
+    if (enabledMeals.length === 0) return { time: "--:--", grams: 0 };
+
+    const getMinutes = (timeStr: string) => {
+      const isPm = timeStr.toLowerCase().includes("pm");
+      const isAm = timeStr.toLowerCase().includes("am");
+      const clean = timeStr.replace(/(am|pm)/i, "").trim();
+      const parts = clean.split(":");
+      let h = Number(parts[0]) || 0;
+      const m = Number(parts[1]) || 0;
+      if (isPm && h < 12) h += 12;
+      if (isAm && h === 12) h = 0;
+      return h * 60 + m;
+    };
+
+    const sorted = [...enabledMeals].sort((a, b) => getMinutes(a.time) - getMinutes(b.time));
+
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const upcoming = sorted.find((m) => getMinutes(m.time) > nowMinutes);
+    return upcoming || sorted[0]; // wraps around to first meal tomorrow
+  };
+
+  // Health verification: Weight gain alert checks
+  const checkWeightGainAlert = (history: WeightRecord[]) => {
+    if (!history || history.length < 2) return null;
+    // Sort history by date first
+    const sorted = [...history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const latest = sorted[sorted.length - 1];
+    const previous = sorted[sorted.length - 2];
+
+    if (latest.weight > previous.weight) {
+      const diff = latest.weight - previous.weight;
+      const pct = (diff / previous.weight) * 100;
+      if (pct >= 5) {
+        return {
+          pct: pct.toFixed(1),
+          diff: diff.toFixed(1),
+          previous: previous.weight,
+          latest: latest.weight,
+          date: latest.date
+        };
+      }
+    }
+    return null;
+  };
+
+  const weightAlert = checkWeightGainAlert(activePet.weightHistory || []);
+  const nextScheduledMeal = getNextScheduledMeal(activePet);
 
   if (!isLoggedIn) {
     return <LoginScreen onLoginSuccess={() => setIsLoggedIn(true)} />;
@@ -369,26 +641,26 @@ export default function App() {
   const activePetLogs = feedingLogs.filter((log) => log.petId === activePet.name);
 
   return (
-    <div className="flex flex-col md:flex-row flex-1 items-center justify-center md:p-8 bg-zinc-50 dark:bg-zinc-950 font-sans md:gap-8 max-w-6xl mx-auto w-full min-h-screen md:min-h-0">
+    <div className="flex flex-col md:flex-row flex-1 items-center justify-center md:p-8 bg-stone-50 dark:bg-stone-950 font-sans md:gap-8 max-w-6xl mx-auto w-full min-h-screen md:min-h-0">
       
       {/* PWA iOS Install popup instructions overlay */}
       {showIosPrompt && (
-        <div className="fixed top-4 inset-x-4 bg-zinc-900 text-white rounded-3xl p-5 border border-zinc-800 shadow-2xl z-50 animate-slide-up flex items-start gap-4 text-xs leading-relaxed max-w-md mx-auto">
-          <Smartphone className="w-8 h-8 text-emerald-400 shrink-0 mt-1" />
+        <div className="fixed top-4 inset-x-4 bg-stone-900 text-white rounded-3xl p-5 border border-stone-850 shadow-2xl z-50 animate-slide-up flex items-start gap-4 text-xs leading-relaxed max-w-md mx-auto">
+          <Smartphone className="w-8 h-8 text-orange-400 shrink-0 mt-1" />
           <div className="flex-1 space-y-1">
-            <h4 className="font-extrabold text-emerald-400 text-sm flex items-center gap-1">
+            <h4 className="font-extrabold text-orange-400 text-sm flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5" />
-              Instala NutriDog en tu iPhone
+              Instala Feedly Pet en tu iPhone
             </h4>
-            <p className="text-zinc-300">
+            <p className="text-stone-300">
               Para una experiencia mobile nativa, abre este menú en Safari, pulsa el botón{" "}
-              <span className="font-extrabold text-white flex items-center gap-0.5 inline-flex bg-zinc-800 px-1 rounded"><Share className="w-3 h-3 text-emerald-400" /> Compartir</span> de tu navegador y selecciona 
+              <span className="font-extrabold text-white flex items-center gap-0.5 inline-flex bg-stone-800 px-1 rounded"><Share className="w-3 h-3 text-orange-400" /> Compartir</span> de tu navegador y selecciona 
               <span className="font-extrabold text-white"> &quot;Agregar al inicio&quot;</span>.
             </p>
           </div>
           <button
             onClick={() => setShowIosPrompt(false)}
-            className="text-zinc-500 hover:text-zinc-300 font-extrabold text-sm px-1"
+            className="text-stone-500 hover:text-stone-300 font-extrabold text-sm px-1 cursor-pointer"
           >
             ✕
           </button>
@@ -398,16 +670,16 @@ export default function App() {
       {/* 1. SMARTPHONE SIMULATOR CONTAINER (Left Viewport) */}
       <div className="w-full md:max-w-[370px] md:shrink-0 h-screen md:h-auto">
         
-        {/* Smartphone Shell with Bezel, Notch, and Status Bar (Bezel and height applied only on MD+ desktop) */}
-        <div className="relative mx-auto bg-white dark:bg-zinc-900 h-screen md:h-[680px] w-full overflow-hidden flex flex-col shadow-none md:shadow-2xl md:border-[11px] md:border-zinc-900 md:dark:border-zinc-800 md:rounded-[48px]">
+        {/* Smartphone Shell with Bezel, Notch, and Status Bar */}
+        <div className="relative mx-auto bg-white dark:bg-stone-900 h-screen md:h-[680px] w-full overflow-hidden flex flex-col shadow-none md:shadow-2xl md:border-[11px] md:border-stone-950 md:dark:border-stone-850 md:rounded-[48px]">
           
           {/* Speaker Notch - ONLY ON DESKTOP */}
-          <div className="hidden md:flex absolute top-0 left-1/2 -translate-x-1/2 h-[22px] w-[110px] bg-zinc-900 rounded-b-2xl z-50 items-center justify-center">
-            <div className="w-8 h-1 bg-zinc-700 rounded-full"></div>
+          <div className="hidden md:flex absolute top-0 left-1/2 -translate-x-1/2 h-[22px] w-[110px] bg-stone-950 rounded-b-2xl z-50 items-center justify-center">
+            <div className="w-8 h-1 bg-stone-750 rounded-full"></div>
           </div>
 
           {/* Smartphone Status Bar - ONLY ON DESKTOP */}
-          <div className="hidden md:flex h-10 bg-emerald-600 text-white justify-between items-center px-6 pt-3 text-[10px] font-bold z-40 select-none">
+          <div className="hidden md:flex h-10 bg-orange-500 text-white justify-between items-center px-6 pt-3 text-[10px] font-bold z-40 select-none">
             <span>00:58 AM</span>
             <div className="flex items-center gap-1">
               <Wifi className="w-3 h-3 text-white" />
@@ -419,31 +691,31 @@ export default function App() {
 
           {/* Push Notification Banner */}
           {notification && (
-            <div className="absolute top-4 md:top-11 inset-x-3.5 bg-zinc-900/95 dark:bg-zinc-950/95 border border-zinc-800 text-white rounded-2xl p-2.5 flex items-start gap-2.5 shadow-lg z-50 animate-slide-up text-[10px] leading-snug">
-              <Bell className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="absolute top-4 md:top-11 inset-x-3.5 bg-stone-900/95 dark:bg-stone-950/95 border border-stone-800 text-white rounded-2xl p-2.5 flex items-start gap-2.5 shadow-lg z-50 animate-slide-up text-[10px] leading-snug">
+              <Bell className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <span className="font-bold text-emerald-400">NutriDog Smart</span>
-                <p className="text-zinc-300">{notification}</p>
+                <span className="font-bold text-orange-400">Feedly Pet Smart</span>
+                <p className="text-stone-300">{notification}</p>
               </div>
             </div>
           )}
 
           {/* Smartphone Mobile App Inner Content Router */}
-          <div className="flex-1 overflow-y-auto bg-slate-50/70 dark:bg-zinc-950/50 pb-20 scrollbar-none relative">
+          <div className="flex-1 overflow-y-auto bg-stone-50/70 dark:bg-stone-950/50 pb-20 scrollbar-none relative">
             
-            {/* PWA Chrome/Android Install Banner (Visible in Inicio tab if install prompt available) */}
+            {/* PWA Chrome/Android Install Banner */}
             {isInstallable && activeTab === "inicio" && (
-              <div className="mx-4 mt-4 p-3 bg-emerald-600 text-white rounded-2xl flex items-center justify-between shadow-md shadow-emerald-600/10 text-xs animate-fade-in relative z-20">
+              <div className="mx-4 mt-4 p-3 bg-orange-500 text-white rounded-2xl flex items-center justify-between shadow-md shadow-orange-500/10 text-xs animate-fade-in relative z-20">
                 <div className="flex items-center gap-2">
-                  <Smartphone className="w-5 h-5 text-emerald-100" />
+                  <Smartphone className="w-5 h-5 text-orange-100" />
                   <div>
                     <h4 className="font-bold">¿Instalar Aplicación?</h4>
-                    <p className="text-[9px] text-emerald-100">Disfruta de NutriDog sin barras de navegación.</p>
+                    <p className="text-[9px] text-orange-100">Disfruta de Feedly Pet sin barras de navegación.</p>
                   </div>
                 </div>
                 <button
                   onClick={handleInstallPwa}
-                  className="bg-white text-emerald-700 px-3 py-1.5 rounded-xl font-bold hover:bg-emerald-50 text-[10px] active:scale-95 transition-all"
+                  className="bg-white text-orange-700 px-3 py-1.5 rounded-xl font-bold hover:bg-orange-50 text-[10px] active:scale-95 transition-all cursor-pointer"
                 >
                   Instalar
                 </button>
@@ -456,12 +728,12 @@ export default function App() {
                 
                 {/* 1. Multi-Pet Horizontal Switcher */}
                 <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                  <div className="flex justify-between items-center text-[10px] text-stone-400 font-bold uppercase tracking-wider">
                     <span>Mascotas</span>
                     <button
                       type="button"
                       onClick={addNewPet}
-                      className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 text-[9px]"
+                      className="text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-0.5 text-[9px] cursor-pointer"
                     >
                       <Plus className="w-3 h-3" /> Añadir
                     </button>
@@ -474,10 +746,10 @@ export default function App() {
                           key={p.name}
                           type="button"
                           onClick={() => setSelectedPetId(p.name)}
-                          className={`flex items-center gap-1.5 py-1.5 px-3 rounded-full border text-xs font-bold transition-all shrink-0 ${
+                          className={`flex items-center gap-1.5 py-1.5 px-3 rounded-full border text-xs font-bold transition-all shrink-0 cursor-pointer ${
                             isSelected
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
-                              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500"
+                              ? "border-orange-500 bg-orange-50/20 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400"
+                              : "border-stone-200 dark:border-stone-850 bg-white dark:bg-stone-900 text-stone-500"
                           }`}
                         >
                           <span>{p.species === "dog" ? "🐶" : "🐱"}</span>
@@ -490,7 +762,7 @@ export default function App() {
 
                 {/* 2. Multi-Dispenser Selector */}
                 <div className="space-y-1.5">
-                  <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                  <div className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">
                     Dispensador Activo
                   </div>
                   <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -501,13 +773,13 @@ export default function App() {
                           key={d.id}
                           type="button"
                           onClick={() => setSelectedDispenserId(d.id)}
-                          className={`flex items-center gap-1.5 py-1.5 px-3 rounded-xl border text-[10px] font-bold transition-all shrink-0 ${
+                          className={`flex items-center gap-1.5 py-1.5 px-3 rounded-xl border text-[10px] font-bold transition-all shrink-0 cursor-pointer ${
                             isSelected
-                              ? "border-emerald-500 bg-emerald-600 text-white"
-                              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 hover:bg-zinc-50"
+                              ? "border-orange-500 bg-orange-500 text-white"
+                              : "border-stone-200 dark:border-stone-850 bg-white dark:bg-stone-900 text-stone-500 hover:bg-stone-50"
                           }`}
                         >
-                          <span className={isSelected ? "text-emerald-200" : "text-emerald-600"}>🔌</span>
+                          <span className={isSelected ? "text-orange-200" : "text-orange-500"}>🔌</span>
                           <span>{d.name.split(" ")[0] + " " + d.name.split(" ")[1]}</span>
                         </button>
                       );
@@ -516,19 +788,19 @@ export default function App() {
                 </div>
 
                 {/* Active Pet Header Card */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-850 p-4 rounded-2xl shadow-sm flex items-center justify-between">
+                <div className="bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-850 p-4 rounded-2xl shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl bg-emerald-100 dark:bg-emerald-950/30 p-2 rounded-xl">
+                    <span className="text-3xl bg-orange-50 dark:bg-orange-950/30 p-2 rounded-xl border border-orange-100 dark:border-orange-900/40">
                       {activePet.species === "dog" ? "🐶" : "🐱"}
                     </span>
                     <div>
-                      <h3 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-100 flex items-center gap-1">
+                      <h3 className="text-sm font-extrabold text-stone-800 dark:text-stone-100 flex items-center gap-1">
                         {activePet.name}
-                        <span className="text-[9px] font-bold text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">
+                        <span className="text-[9px] font-bold text-stone-500 px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800">
                           {activePet.weight} Kg
                         </span>
                       </h3>
-                      <p className="text-[9px] text-zinc-400 font-semibold uppercase">
+                      <p className="text-[9px] text-stone-400 font-semibold uppercase">
                         {activePet.breed} • {activePet.age} años
                       </p>
                     </div>
@@ -536,35 +808,48 @@ export default function App() {
                   
                   {/* Linked status tag */}
                   <div className="text-right flex flex-col items-end">
-                    <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100/40 px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                      <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Vinculado
+                    <span className="text-[8px] font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20 border border-orange-100/40 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                      En línea
                     </span>
-                    <span className="text-[7px] text-zinc-400 font-semibold mt-1">
+                    <span className="text-[7px] text-stone-400 font-semibold mt-1">
                       {dispensers.find((d) => d.linkedPetId === activePet.name)?.name.split(" ")[0] || "Sin Dispenser"}
                     </span>
                   </div>
                 </div>
 
+                {/* Significant Weight Gain Warning Alert */}
+                {weightAlert && (
+                  <div className="bg-orange-50/50 dark:bg-orange-950/10 border border-orange-200 dark:border-orange-900/50 rounded-2xl p-3.5 text-xs text-orange-850 dark:text-orange-400 flex items-start gap-2.5 shadow-sm animate-pulse">
+                    <span className="text-base shrink-0 mt-0.5">🚨</span>
+                    <div>
+                      <h4 className="font-extrabold text-orange-600 dark:text-orange-400">¡Alerta: Aumento de Peso!</h4>
+                      <p className="text-[10px] text-stone-500 dark:text-stone-400 leading-snug mt-0.5">
+                        <strong>{activePet.name}</strong> ha subido <strong>+{weightAlert.diff} Kg (+{weightAlert.pct}%)</strong> en su último control. Se recomienda moderar su racionamiento.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Calorie Ring Progress Card */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-850 rounded-2xl p-5 text-center flex flex-col items-center shadow-sm">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">
-                    Calorías de {activePet.name}
+                <div className="bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-850 rounded-2xl p-5 text-center flex flex-col items-center shadow-sm">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">
+                    Calorías consumidas
                   </span>
                   
                   <div className="relative flex items-center justify-center mb-2">
                     <svg width="120" height="120">
                       <circle
-                        stroke="#e2e8f0"
+                        stroke="#e7e5e4"
                         fill="transparent"
                         strokeWidth={stroke}
                         r={normalizedRadius}
                         cx="60"
                         cy="60"
-                        className="dark:stroke-zinc-800"
+                        className="dark:stroke-stone-850"
                       />
                       <circle
-                        stroke="#10b981"
+                        stroke="#f97316"
                         fill="transparent"
                         strokeWidth={stroke}
                         strokeDasharray={circumference + " " + circumference}
@@ -577,47 +862,141 @@ export default function App() {
                       />
                     </svg>
                     <div className="absolute flex flex-col items-center justify-center">
-                      <span className="text-xl font-black text-zinc-800 dark:text-zinc-100">
+                      <span className="text-xl font-black text-stone-800 dark:text-stone-100">
                         {activeConsumed}
                       </span>
-                      <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">
+                      <span className="text-[9px] text-stone-400 font-bold uppercase tracking-wider">
                         / {activeMerTarget} Kcal
                       </span>
                     </div>
                   </div>
 
-                  <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 mt-2">
-                    {percentConsumed}% del objetivo de baja de peso
+                  <p className="text-xs font-semibold text-stone-600 dark:text-stone-400 mt-2">
+                    {percentConsumed}% del consumo diario objetivo
                   </p>
                 </div>
 
                 {/* Device Quick Status Details */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-850 p-3.5 rounded-2xl shadow-sm text-center">
-                    <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-wider">Tolva ({activeDispenser.name.split(" ")[0]})</p>
-                    <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
+                  <div className="bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-850 p-3.5 rounded-2xl shadow-sm text-center">
+                    <p className="text-[8px] text-stone-450 dark:text-stone-400 font-bold uppercase tracking-wider">Tolva ({activeDispenser.name.split(" ")[0]})</p>
+                    <p className="text-base font-extrabold text-orange-500 dark:text-orange-400 mt-1">
                       {activeDispenser.hopperLevel}%
                     </p>
-                    <span className="text-[8px] text-zinc-400">~{((3.5 * activeDispenser.hopperLevel) / 100).toFixed(1)} Kg restantes</span>
+                    <span className="text-[8px] text-stone-400">~{((3.5 * activeDispenser.hopperLevel) / 100).toFixed(1)} Kg restantes</span>
                   </div>
-                  <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-850 p-3.5 rounded-2xl shadow-sm text-center">
-                    <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-wider">Próxima Toma</p>
-                    <p className="text-sm font-extrabold text-zinc-800 dark:text-zinc-100 mt-1">
-                      08:00 PM
-                    </p>
-                    <span className="text-[8px] text-zinc-400 font-semibold text-emerald-600">
-                      Ración: {Math.round(activeMerTarget / activePet.foodDensity / activePet.mealsPerDay)}g
+                  <div className="bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-850 p-3.5 rounded-2xl shadow-sm text-center flex flex-col justify-between">
+                    <div>
+                      <p className="text-[8px] text-stone-455 dark:text-stone-400 font-bold uppercase tracking-wider">Próxima Toma</p>
+                      <p className="text-sm font-extrabold text-stone-850 dark:text-stone-100 mt-1">
+                        {nextScheduledMeal.time}
+                      </p>
+                    </div>
+                    <span className="text-[8px] text-stone-450 dark:text-stone-400 font-semibold text-orange-600 dark:text-orange-400">
+                      Ración: {nextScheduledMeal.grams}g
                     </span>
                   </div>
                 </div>
 
-                {/* Obesity Alert */}
+                {/* Raciones / Horario editable list card */}
+                <div className="bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-850 p-4 rounded-2xl shadow-sm space-y-3">
+                  <div className="flex justify-between items-center border-b border-stone-100 dark:border-stone-800 pb-2">
+                    <h4 className="text-[10px] font-bold text-stone-800 dark:text-stone-200 uppercase tracking-widest flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-orange-500 animate-pulse" /> Horarios Programados
+                    </h4>
+                    <button
+                      onClick={handleAddNewMeal}
+                      className="text-[8px] bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-orange-950/20 dark:text-orange-400 font-bold py-1.5 px-2 rounded-lg border border-orange-100 dark:border-orange-900/50 cursor-pointer"
+                    >
+                      + Nueva
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5 max-h-[200px] overflow-y-auto pr-1">
+                    {(activePet.mealsSchedule || []).map((meal) => {
+                      const isEditing = editingMealId === meal.id;
+                      return (
+                        <div key={meal.id} className="flex flex-col gap-2 p-2 bg-stone-50 dark:bg-stone-950 rounded-xl border border-stone-100 dark:border-stone-850">
+                          {isEditing ? (
+                            <div className="space-y-2 text-[10px]">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-stone-400 text-[8px] mb-0.5">Hora</label>
+                                  <input
+                                    type="time"
+                                    value={editingTime}
+                                    onChange={(e) => setEditingTime(e.target.value)}
+                                    className="w-full p-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded text-[10px] focus:outline-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-stone-400 text-[8px] mb-0.5">Ración (g)</label>
+                                  <input
+                                    type="number"
+                                    min="5"
+                                    max="200"
+                                    value={editingGrams}
+                                    onChange={(e) => setEditingGrams(Number(e.target.value))}
+                                    className="w-full p-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded text-[10px] focus:outline-none"
+                                  />
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={saveMealScheduleEdit}
+                                className="w-full bg-orange-500 hover:bg-orange-655 text-white font-bold py-1 rounded text-[9px] cursor-pointer"
+                              >
+                                Guardar Ración
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={meal.enabled}
+                                  onChange={() => handleToggleMeal(meal.id)}
+                                  className="accent-orange-500 cursor-pointer h-3.5 w-3.5 border-stone-300 rounded"
+                                />
+                                <span className={`text-[11px] font-bold ${meal.enabled ? "text-stone-700 dark:text-stone-200" : "text-stone-400 line-through"}`}>
+                                  {meal.time}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${meal.enabled ? "bg-orange-50 text-orange-600 dark:bg-orange-950/20 dark:text-orange-400" : "bg-stone-100 text-stone-400"}`}>
+                                  {meal.grams}g
+                                </span>
+                                <button
+                                  onClick={() => startEditingMeal(meal)}
+                                  className="text-stone-400 hover:text-orange-650 cursor-pointer"
+                                  title="Editar"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteMeal(meal.id)}
+                                  className="text-stone-400 hover:text-rose-500 cursor-pointer"
+                                  title="Borrar"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Medical Obesity Alert */}
                 {activePet.bcs >= 7 && (
-                  <div className="bg-rose-50/50 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/40 rounded-2xl p-3.5 text-xs text-rose-800 dark:text-rose-400 flex items-start gap-2.5">
+                  <div className="bg-rose-50/50 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/40 rounded-2xl p-3.5 text-xs text-rose-800 dark:text-rose-400 flex items-start gap-2.5 shadow-sm">
                     <span className="text-lg">⚠️</span>
                     <div>
-                      <h4 className="font-bold">Plan de Reducción de Peso Activo</h4>
-                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug mt-0.5">
+                      <h4 className="font-bold">Plan Clínico de Reducción Activo</h4>
+                      <p className="text-[10px] text-stone-500 dark:text-stone-400 leading-snug mt-0.5">
                         El dispensador limitará las porciones de {activePet.name} para lograr una baja del 1% semanal.
                       </p>
                     </div>
@@ -640,30 +1019,49 @@ export default function App() {
             {/* CHARTS / LOGS TAB */}
             {activeTab === "registro" && (
               <div className="p-4 space-y-4 animate-fade-in">
-                <HistoryCharts />
+                {/* Weight Alert check in progress tab */}
+                {weightAlert && (
+                  <div className="bg-orange-50/50 dark:bg-orange-950/10 border border-orange-200 dark:border-orange-900/40 rounded-2xl p-3.5 text-xs text-orange-850 dark:text-orange-400 flex items-start gap-2 shadow-sm animate-pulse">
+                    <span className="text-base shrink-0 mt-0.5">🚨</span>
+                    <div>
+                      <h4 className="font-extrabold text-orange-600 dark:text-orange-400">¡Alerta: Aumento importante de peso!</h4>
+                      <p className="text-[10px] text-stone-550 dark:text-stone-400 leading-snug mt-0.5">
+                        Se detectó un incremento de peso significativo de <strong>+{weightAlert.diff} Kg (+{weightAlert.pct}%)</strong> en la última fecha ({weightAlert.date}).
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <HistoryCharts
+                  weightHistory={activePet.weightHistory || []}
+                  onAddWeightRecord={handleAddWeightRecord}
+                  onDeleteWeightRecord={handleDeleteWeightRecord}
+                  targetWeight={activePet.species === "dog" ? 11.0 : 4.5}
+                  petName={activePet.name}
+                />
 
                 {/* Feeding Logs list for active pet */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-3xl p-5 shadow-sm space-y-3">
-                  <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-2 flex items-center gap-1.5">
-                    <Utensils className="w-3.5 h-3.5 text-emerald-500" /> Registro de {activePet.name}
+                <div className="bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-800 rounded-3xl p-5 shadow-sm space-y-3">
+                  <h4 className="text-xs font-bold text-stone-850 dark:text-stone-200 uppercase tracking-widest border-b border-stone-100 dark:border-stone-800 pb-2 flex items-center gap-1.5">
+                    <Utensils className="w-3.5 h-3.5 text-orange-500" /> Registro de {activePet.name}
                   </h4>
                   
                   <div className="space-y-3.5 max-h-[220px] overflow-y-auto scrollbar-thin pr-1">
                     {activePetLogs.length === 0 ? (
-                      <p className="text-xs text-zinc-450 dark:text-zinc-500 text-center py-6">
+                      <p className="text-xs text-stone-450 dark:text-stone-500 text-center py-6">
                         No hay tomas registradas hoy para {activePet.name}.
                       </p>
                     ) : (
                       activePetLogs.map((log) => (
                         <div key={log.id} className="flex justify-between items-start text-[10px]">
-                          <div className="space-y-0.5">
-                            <p className="font-bold text-zinc-700 dark:text-zinc-300">
+                          <div className="space-y-0.5 text-left">
+                            <p className="font-bold text-stone-700 dark:text-stone-300">
                               {log.text}
                             </p>
-                            <span className="text-zinc-400 font-mono">{log.time}</span>
+                            <span className="text-stone-400 font-mono">{log.time}</span>
                           </div>
                           {log.calories && (
-                            <span className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400 font-mono font-bold px-1.5 py-0.5 rounded text-[8px] shrink-0 ml-2">
+                            <span className="bg-orange-50 text-orange-600 dark:bg-orange-950/20 dark:text-orange-400 font-mono font-bold px-1.5 py-0.5 rounded text-[8px] shrink-0 ml-2">
                               +{log.calories} Kcal
                             </span>
                           )}
@@ -698,11 +1096,11 @@ export default function App() {
           </div>
 
           {/* Smartphone Bottom Navigation Bar */}
-          <div className="absolute bottom-0 inset-x-0 h-[66px] bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-zinc-100 dark:border-zinc-850 flex items-center justify-around px-2 z-40">
+          <div className="absolute bottom-0 inset-x-0 h-[66px] bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-100 dark:border-stone-850 flex items-center justify-around px-2 z-40">
             <button
               onClick={() => setActiveTab("inicio")}
-              className={`flex flex-col items-center gap-1 select-none transition-all ${
-                activeTab === "inicio" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400 hover:text-zinc-600"
+              className={`flex flex-col items-center gap-1 select-none transition-all cursor-pointer ${
+                activeTab === "inicio" ? "text-orange-500 dark:text-orange-400" : "text-stone-400 hover:text-stone-600"
               }`}
             >
               <Home className="w-5.5 h-5.5" />
@@ -710,8 +1108,8 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab("calc")}
-              className={`flex flex-col items-center gap-1 select-none transition-all ${
-                activeTab === "calc" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400 hover:text-zinc-600"
+              className={`flex flex-col items-center gap-1 select-none transition-all cursor-pointer ${
+                activeTab === "calc" ? "text-orange-500 dark:text-orange-400" : "text-stone-400 hover:text-stone-600"
               }`}
             >
               <Heart className="w-5.5 h-5.5" />
@@ -719,8 +1117,8 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab("registro")}
-              className={`flex flex-col items-center gap-1 select-none transition-all ${
-                activeTab === "registro" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400 hover:text-zinc-600"
+              className={`flex flex-col items-center gap-1 select-none transition-all cursor-pointer ${
+                activeTab === "registro" ? "text-orange-500 dark:text-orange-400" : "text-stone-400 hover:text-stone-600"
               }`}
             >
               <TrendingDown className="w-5.5 h-5.5" />
@@ -728,18 +1126,17 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab("vet")}
-              className={`flex flex-col items-center gap-1 select-none transition-all ${
-                activeTab === "vet" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400 hover:text-zinc-600"
+              className={`flex flex-col items-center gap-1 select-none transition-all cursor-pointer ${
+                activeTab === "vet" ? "text-orange-500 dark:text-orange-400" : "text-stone-400 hover:text-stone-600"
               }`}
             >
               <Video className="w-5.5 h-5.5" />
               <span className="text-[9px] font-bold">Vet</span>
             </button>
-            {/* Only displays Feeder Simulator icon on smaller screens to toggle the simulator view */}
             <button
               onClick={() => setActiveTab("simulator")}
-              className={`flex flex-col items-center gap-1 select-none transition-all md:hidden ${
-                activeTab === "simulator" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400 hover:text-zinc-600"
+              className={`flex flex-col items-center gap-1 select-none transition-all md:hidden cursor-pointer ${
+                activeTab === "simulator" ? "text-orange-500 dark:text-orange-400" : "text-stone-400 hover:text-stone-600"
               }`}
             >
               <Cpu className="w-5.5 h-5.5" />
@@ -748,7 +1145,7 @@ export default function App() {
           </div>
 
           {/* iOS-like Home Indicator bar - ONLY ON DESKTOP */}
-          <div className="hidden md:block absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-zinc-400/60 rounded-full z-50"></div>
+          <div className="hidden md:block absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-stone-400/60 rounded-full z-50"></div>
         </div>
       </div>
 

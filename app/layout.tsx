@@ -13,17 +13,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NutriDog - Dispensador Inteligente y Nutrición Personalizada",
-  description: "Monitorea la alimentación de tu mascota, calcula sus necesidades energéticas diarias (Kcal) y controla el dispensador inteligente NutriDog para prevenir y tratar la obesidad.",
+  title: "Feedly Pet - Dispensador Inteligente y Nutrición Personalizada",
+  description: "Monitorea la alimentación de tu mascota, calcula sus necesidades energéticas diarias (Kcal) y controla el dispensador inteligente Feedly Pet para prevenir y tratar la obesidad.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "NutriDog",
+    title: "Feedly Pet",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#10b981", // Emerald 500
+  themeColor: "#f97316", // Orange 500
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

@@ -101,29 +101,29 @@ export default function FeederSimulator({
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-3xl p-5 shadow-sm space-y-4">
+    <div className="bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-3xl p-5 shadow-sm space-y-4">
       {/* Simulator branding header */}
-      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
-        <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-1.5">
-          <Cpu className="w-4.5 h-4.5 text-emerald-600 animate-pulse" />
+      <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2.5">
+        <h3 className="text-sm font-bold text-stone-900 dark:text-stone-50 flex items-center gap-1.5">
+          <Cpu className="w-4.5 h-4.5 text-orange-500 animate-pulse" />
           Simulador Físico del Dispensador
         </h3>
-        <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold px-2 py-0.5 rounded-full">
+        <span className="text-[9px] bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-semibold px-2 py-0.5 rounded-full">
           Hardware Live V1
         </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Physical Dispenser Viewport */}
-        <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-900 rounded-2xl p-4 flex flex-col items-center justify-between min-h-[260px] relative overflow-hidden">
+        <div className="bg-stone-50 dark:bg-stone-950 border border-stone-100 dark:border-stone-900 rounded-2xl p-4 flex flex-col items-center justify-between min-h-[260px] relative overflow-hidden">
           {/* LED Status Bar */}
-          <div className="absolute top-3 right-3 flex items-center gap-2 bg-white/80 dark:bg-zinc-900/80 px-2.5 py-1 rounded-full border border-zinc-100 dark:border-zinc-800 text-[8px] font-bold text-zinc-500">
+          <div className="absolute top-3 right-3 flex items-center gap-2 bg-white/80 dark:bg-stone-900/80 px-2.5 py-1 rounded-full border border-stone-100 dark:border-stone-800 text-[8px] font-bold text-stone-500">
             <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping"></span>
               POWER
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
               WIFI
             </span>
             {hopperLevel <= 15 && (
@@ -137,27 +137,27 @@ export default function FeederSimulator({
           {/* Feeder Body rendering */}
           <div className="w-full max-w-[130px] flex flex-col items-center mt-6">
             {/* Hopper / Cylinder */}
-            <div className="w-24 h-24 bg-zinc-200 dark:bg-zinc-850 rounded-t-3xl border-2 border-zinc-300 dark:border-zinc-700 relative overflow-hidden flex items-end">
+            <div className="w-24 h-24 bg-stone-100 dark:bg-stone-850 rounded-t-3xl border-2 border-stone-300 dark:border-stone-700 relative overflow-hidden flex items-end">
               {/* Back Glass Texture */}
               <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent"></div>
 
               {/* Food beads simulation container */}
               <div
-                className="w-full bg-gradient-to-t from-emerald-600/30 to-emerald-500/20 border-t border-emerald-500/50 transition-all duration-700 flex items-center justify-center relative"
+                className="w-full bg-gradient-to-t from-orange-500/30 to-orange-400/20 border-t border-orange-400/50 transition-all duration-700 flex items-center justify-center relative"
                 style={{ height: `${hopperLevel}%` }}
               >
                 {/* Texture dots inside food level */}
-                <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#065f46_1.5px,transparent_1.5px)] [background-size:6px_6px]"></div>
-                <span className="text-[10px] font-extrabold text-emerald-800 dark:text-emerald-400 select-none z-10">
+                <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#ea580c_1.5px,transparent_1.5px)] [background-size:6px_6px]"></div>
+                <span className="text-[10px] font-extrabold text-orange-800 dark:text-orange-400 select-none z-10">
                   {hopperLevel}%
                 </span>
               </div>
             </div>
 
             {/* Feeder Nozzle / Control Area */}
-            <div className="w-24 h-10 bg-zinc-100 dark:bg-zinc-800 border-x-2 border-zinc-300 dark:border-zinc-700 relative flex items-center justify-center">
+            <div className="w-24 h-10 bg-stone-100 dark:bg-stone-850 border-x-2 border-stone-300 dark:border-stone-700 relative flex items-center justify-center">
               {/* Chute opening */}
-              <div className="w-6 h-3 bg-zinc-800 rounded-b-lg border-t border-zinc-950 relative z-20"></div>
+              <div className="w-6 h-3 bg-stone-800 rounded-b-lg border-t border-stone-950 relative z-20"></div>
 
               {/* Particles falling animation container */}
               {isDispensing && (
@@ -177,8 +177,8 @@ export default function FeederSimulator({
             </div>
 
             {/* Bowl Container */}
-            <div className="w-28 h-10 bg-zinc-300 dark:bg-zinc-800 rounded-t-xl border-x-2 border-zinc-400 dark:border-zinc-700 relative flex items-center justify-center shadow-md">
-              <div className="absolute inset-0 bg-gradient-to-b from-zinc-300 to-zinc-400 dark:from-zinc-800 dark:to-zinc-900 rounded-t-lg"></div>
+            <div className="w-28 h-10 bg-stone-300 dark:bg-stone-800 rounded-t-xl border-x-2 border-stone-400 dark:border-stone-700 relative flex items-center justify-center shadow-md">
+              <div className="absolute inset-0 bg-gradient-to-b from-stone-300 to-stone-400 dark:from-stone-800 dark:to-stone-900 rounded-t-lg"></div>
               
               {/* Food in bowl visual representation */}
               {bowlWeight > 0 && (
@@ -194,7 +194,7 @@ export default function FeederSimulator({
               )}
 
               {/* Bowl Scale Sensor tag */}
-              <div className="absolute -bottom-2.5 bg-zinc-900 text-[8px] font-mono font-bold text-white px-2 py-0.5 rounded-full border border-zinc-700 z-10">
+              <div className="absolute -bottom-2.5 bg-stone-900 text-[8px] font-mono font-bold text-white px-2 py-0.5 rounded-full border border-stone-700 z-10">
                 {bowlWeight}g en plato
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function FeederSimulator({
         {/* Hardware Control panel */}
         <div className="flex flex-col justify-between space-y-4">
           <div className="space-y-2.5">
-            <h4 className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+            <h4 className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider">
               Acciones de Pruebas
             </h4>
             
@@ -212,7 +212,7 @@ export default function FeederSimulator({
               <button
                 onClick={handleManualDispense}
                 disabled={isDispensing || isEating || hopperLevel <= 5}
-                className="w-full p-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-100 disabled:text-zinc-400 text-white rounded-2xl transition-all font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                className="w-full p-3 bg-orange-500 hover:bg-orange-600 disabled:bg-stone-100 disabled:text-stone-450 dark:disabled:bg-stone-850 dark:disabled:text-stone-500 text-white rounded-2xl transition-all font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 Dispensar Ración (25g)
@@ -221,10 +221,10 @@ export default function FeederSimulator({
               <button
                 onClick={handlePetSimulate}
                 disabled={isDispensing || bowlWeight === 0 || isEating}
-                className={`w-full p-3 rounded-2xl border transition-all font-semibold flex items-center justify-center gap-1.5 active:scale-95 ${
+                className={`w-full p-3 rounded-2xl border transition-all font-semibold flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer ${
                   petNear
                     ? "border-amber-500 bg-amber-500 text-white animate-pulse"
-                    : "border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-850"
+                    : "border-stone-200 dark:border-stone-850 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-850"
                 }`}
               >
                 <Wifi className="w-3.5 h-3.5" />
@@ -234,18 +234,18 @@ export default function FeederSimulator({
           </div>
 
           {/* Status logs */}
-          <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-900 rounded-2xl p-3 text-[10px] space-y-1.5 font-mono text-zinc-500 dark:text-zinc-400">
-            <p className="font-bold text-zinc-700 dark:text-zinc-300 border-b border-zinc-200/50 dark:border-zinc-900/40 pb-1 flex items-center gap-1">
-              <RotateCw className="w-3 h-3 text-emerald-500" /> Registro Sensores
+          <div className="bg-stone-50 dark:bg-stone-950 border border-stone-100 dark:border-stone-900 rounded-2xl p-3 text-[10px] space-y-1.5 font-mono text-stone-500 dark:text-stone-400">
+            <p className="font-bold text-stone-700 dark:text-stone-300 border-b border-stone-200/50 dark:border-stone-900/40 pb-1 flex items-center gap-1">
+              <RotateCw className="w-3 h-3 text-orange-500" /> Registro Sensores
             </p>
             {isDispensing && (
-              <p className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-pulse">
+              <p className="text-orange-500 dark:text-orange-400 flex items-center gap-1 animate-pulse">
                 • [MOT] Motor activado, dispensando...
               </p>
             )}
             {isEating && (
               <p className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                • [PESO] Lola comiendo. Sensor: -5g/seg.
+                • [PESO] {petName} comiendo. Sensor: -5g/seg.
               </p>
             )}
             {!isDispensing && !isEating && (
