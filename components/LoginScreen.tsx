@@ -124,12 +124,12 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 text-white font-medium rounded-2xl text-sm transition-all hover:shadow-lg hover:shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-2"
+            className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 text-white font-medium rounded-2xl text-sm transition-all hover:shadow-lg hover:shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
           >
             {isLoading ? (
               <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
             ) : (
-              "Sincronizar Dispositivo"
+              "Ingresar"
             )}
           </button>
         </form>
